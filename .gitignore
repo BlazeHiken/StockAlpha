@@ -1,4 +1,27 @@
+# Documentation
 Summary.txt
+
+# Project files
 PRD
+
+# Virtual environment
+.venv/
+
 # Generated data
 *.parquet
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest
+.pytest_cache/
+
+# Environment variables
+.env
+
+# ChromaDB database
+chroma_db/
+
+# Streamlit cache
+.streamlit/
