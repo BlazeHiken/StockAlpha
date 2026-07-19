@@ -1,0 +1,20 @@
+# --- Core & Data Manipulation ---
+pandas==3.0.1
+numpy==2.4.2
+scipy==1.17.0
+
+# --- Market Data & Storage ---
+yfinance==0.2.40
+pyarrow==16.1.0
+
+# --- Dashboard & UI ---
+streamlit==1.36.0
+
+# --- Generative AI & RAG ---
+google-generativeai==0.5.4
+chromadb==0.5.0
+streamlit-cookies-manager==0.1.2
+
+# --- Environment & Testing ---
+python-dotenv==1.2.2
+pytest==8.2.2
