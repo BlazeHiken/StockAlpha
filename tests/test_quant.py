@@ -54,11 +54,11 @@ def test_calculate_portfolio_performance(dummy_returns):
     cov_matrix = calculate_covariance_matrix(dummy_returns, days=252)
     
     weights = np.array([0.5, 0.5])
-    ret, vol, sharpe = calculate_portfolio_performance(weights, ann_returns, cov_matrix, risk_free_rate=0.0)
+    metrics = calculate_portfolio_performance(weights, ann_returns, cov_matrix, risk_free_rate=0.0)
     
     # Equal weight return is average of the two annualized returns
     expected_ret = 0.5 * ann_returns["A"] + 0.5 * ann_returns["B"]
-    assert np.isclose(ret, expected_ret)
+    assert np.isclose(metrics.expected_return, expected_ret)
 
 def test_calculate_max_drawdown():
     # Price goes 100 -> 120 -> 90 -> 100
@@ -83,8 +83,8 @@ def test_maximize_sharpe_ratio():
     
     result = maximize_sharpe_ratio(ann_returns, cov_matrix, risk_free_rate=0.02)
     
-    assert result["success"] is True
-    weights = result["weights"]
+    assert result.success is True
+    weights = result.weights
     assert "A" in weights and "B" in weights
     
     # Check constraints

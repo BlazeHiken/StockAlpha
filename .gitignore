@@ -25,3 +25,8 @@ chroma_db/
 
 # Streamlit cache
 .streamlit/
+
+documentation
+testy.py
+pyrefly.toml
+pytest.ini

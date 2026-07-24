@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 
-DEFAULT_RISK_FREE_RATE = 0.065
+from src.config import DEFAULT_RISK_FREE_RATE, TRADING_DAYS_PER_YEAR
+from src.quant.models import PortfolioMetrics
 
 def calculate_daily_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """
@@ -16,39 +17,39 @@ def calculate_daily_returns(prices: pd.DataFrame) -> pd.DataFrame:
     daily_returns = prices.pct_change()
     return daily_returns.dropna()
 
-def calculate_annualized_returns(daily_returns: pd.DataFrame, days: int = 252) -> pd.Series:
+def calculate_annualized_returns(daily_returns: pd.DataFrame, days: int = TRADING_DAYS_PER_YEAR) -> pd.Series:
     """
     Calculates the annualized returns for each asset.
     
     Args:
         daily_returns (pd.DataFrame): DataFrame of daily returns.
-        days (int): Number of trading days in a year (default 252).
+        days (int): Number of trading days in a year.
         
     Returns:
         pd.Series: Annualized returns per asset.
     """
     return daily_returns.mean() * days
 
-def calculate_annualized_volatility(daily_returns: pd.DataFrame, days: int = 252) -> pd.Series:
+def calculate_annualized_volatility(daily_returns: pd.DataFrame, days: int = TRADING_DAYS_PER_YEAR) -> pd.Series:
     """
     Calculates the annualized volatility (standard deviation) for each asset.
     
     Args:
         daily_returns (pd.DataFrame): DataFrame of daily returns.
-        days (int): Number of trading days in a year (default 252).
+        days (int): Number of trading days in a year.
         
     Returns:
         pd.Series: Annualized volatility per asset.
     """
     return daily_returns.std() * np.sqrt(days)
 
-def calculate_covariance_matrix(daily_returns: pd.DataFrame, days: int = 252) -> pd.DataFrame:
+def calculate_covariance_matrix(daily_returns: pd.DataFrame, days: int = TRADING_DAYS_PER_YEAR) -> pd.DataFrame:
     """
     Calculates the annualized covariance matrix of the assets.
     
     Args:
         daily_returns (pd.DataFrame): DataFrame of daily returns.
-        days (int): Number of trading days in a year (default 252).
+        days (int): Number of trading days in a year.
         
     Returns:
         pd.DataFrame: Annualized covariance matrix.
@@ -58,29 +59,43 @@ def calculate_covariance_matrix(daily_returns: pd.DataFrame, days: int = 252) ->
 def calculate_portfolio_performance(weights: np.ndarray, 
                                   ann_returns: pd.Series, 
                                   cov_matrix: pd.DataFrame, 
-                                  risk_free_rate: float = DEFAULT_RISK_FREE_RATE) -> tuple[float, float, float]:
+                                  daily_returns: pd.DataFrame | None = None,
+                                  risk_free_rate: float = DEFAULT_RISK_FREE_RATE) -> PortfolioMetrics:
     """
-    Calculates the expected return, volatility, and Sharpe Ratio of a portfolio.
+    Calculates the expected return, volatility, Sharpe Ratio, and max drawdown of a portfolio.
     
     Args:
         weights (np.ndarray): Array of asset weights.
         ann_returns (pd.Series): Annualized returns of the assets.
         cov_matrix (pd.DataFrame): Annualized covariance matrix.
-        risk_free_rate (float): The risk-free rate (default 0.065 for Indian 10y G-Sec).
+        daily_returns (pd.DataFrame | None): Daily returns of the assets for max drawdown calculation.
+        risk_free_rate (float): The risk-free rate.
         
     Returns:
-        tuple[float, float, float]: (expected_return, volatility, sharpe_ratio)
+        PortfolioMetrics: Dataclass containing the performance metrics.
     """
     # Expected Return
-    port_return = np.sum(ann_returns * weights)
+    port_return = float(np.sum(ann_returns * weights))
     
     # Expected Volatility
-    port_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+    cov = cov_matrix.to_numpy()
+    port_volatility = float(np.sqrt(weights.T @ cov @ weights))
     
     # Sharpe Ratio
     sharpe_ratio = (port_return - risk_free_rate) / port_volatility if port_volatility != 0 else 0.0
     
-    return port_return, port_volatility, sharpe_ratio
+    # Max Drawdown
+    max_drawdown = 0.0
+    if daily_returns is not None:
+        port_daily_returns = (daily_returns * weights).sum(axis=1)
+        max_drawdown = calculate_max_drawdown(port_daily_returns)
+    
+    return PortfolioMetrics(
+        expected_return=port_return,
+        volatility=port_volatility,
+        sharpe_ratio=sharpe_ratio,
+        max_drawdown=max_drawdown
+    )
 
 def calculate_max_drawdown(daily_returns: pd.Series) -> float:
     """
@@ -102,4 +117,4 @@ def calculate_max_drawdown(daily_returns: pd.Series) -> float:
     drawdown = (cumulative_returns - running_max) / running_max
     
     # Max drawdown is the minimum value (most negative)
-    return drawdown.min()
+    return float(drawdown.min())

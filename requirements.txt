@@ -4,11 +4,13 @@ numpy==2.4.2
 scipy==1.17.0
 
 # --- Market Data & Storage ---
-yfinance==0.2.40
+yfinance==1.5.2
+curl_cffi==0.15.0
 pyarrow==24.0.0
 
 # --- Dashboard & UI ---
 streamlit==1.59.2
+altair==6.2.2
 
 # --- Generative AI & RAG ---
 google-generativeai==0.5.4
