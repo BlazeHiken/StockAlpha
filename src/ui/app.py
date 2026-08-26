@@ -5,6 +5,7 @@ import altair as alt
 from datetime import datetime, timedelta
 import os
 import sys
+import plotly.graph_objects as go
 
 # Add parent directory to path so we can import src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -106,6 +107,12 @@ if run_btn:
             # --- Display Results ---
             st.divider()
             
+            st.markdown("### 📊 Portfolio Backtest & Analytics")
+            st.markdown("""
+            **Methodology Note:** To prevent lookahead bias, the optimizer was strictly trained on the **first 80%** of the historical data (In-Sample). 
+            Those learned weights were then frozen and applied to the **final 20%** of the data (Out-Of-Sample) to evaluate true performance.
+            """)
+            
             # --- Row 1: Benchmarks ---
             st.subheader("Performance Comparison")
             
@@ -113,14 +120,63 @@ if run_btn:
             display_df = analysis.benchmark_results.comparison_df.copy()
             display_df = display_df.astype(object)
 
-            display_df.loc["Return"] = (display_df.loc["Return"] * 100).map("{:.2f}%".format)
-            display_df.loc["Volatility"] = (display_df.loc["Volatility"] * 100).map("{:.2f}%".format)
-            display_df.loc["Max Drawdown"] = (display_df.loc["Max Drawdown"] * 100).map("{:.2f}%".format)
-            display_df.loc["Sharpe Ratio"] = display_df.loc["Sharpe Ratio"].map("{:.3f}".format)
+            percentage_rows = [
+                "IS Return",
+                "OOS Return",
+                "IS Volatility",
+                "OOS Volatility",
+                "IS Max Drawdown",
+                "OOS Max Drawdown",
+            ]
+
+            sharpe_rows = [
+                "IS Sharpe",
+                "OOS Sharpe",
+            ]
+
+            for row in percentage_rows:
+                display_df.loc[row] = display_df.loc[row].map(
+                    lambda x: f"{float(x) * 100:.2f}%"
+                )
+
+            for row in sharpe_rows:
+                display_df.loc[row] = display_df.loc[row].map(
+                    lambda x: f"{float(x):.3f}"
+                )
             
             st.dataframe(display_df, use_container_width=True)
             
             # --- Row 2: Charts ---
+            st.divider()
+            st.subheader("Historical Backtest")
+            
+            import plotly.express as px
+            from src.quant.metrics import calculate_cumulative_returns, calculate_annualized_returns, calculate_annualized_volatility
+            
+            full_returns = pd.concat([analysis.train_returns, analysis.test_returns])
+            tickers = list(full_returns.columns)
+            
+            opt_weights_arr = np.array([analysis.opt_result.weights.get(t, 0) for t in tickers])
+            eq_weights_arr = np.array([analysis.benchmark_results.equal_weight.weights.get(t, 0) for t in tickers])
+            
+            opt_returns = (full_returns * opt_weights_arr).sum(axis=1)
+            eq_returns = (full_returns * eq_weights_arr).sum(axis=1)
+            
+            chart_df = pd.DataFrame({
+                "Optimal (Max Sharpe)": calculate_cumulative_returns(opt_returns),
+                "Naive (Equal Weight)": calculate_cumulative_returns(eq_returns)
+            })
+            
+            if analysis.market_train is not None and analysis.market_test is not None:
+                market_returns_full = pd.concat([analysis.market_train, analysis.market_test])
+                chart_df["Market (NIFTY 50)"] = calculate_cumulative_returns(market_returns_full)
+            
+            fig_bt = px.line(chart_df, labels={"value": "Cumulative Wealth Index", "index": "Date"}, title="Cumulative Returns")
+            split_date = analysis.test_returns.index[0]
+            fig_bt.add_vline(x=split_date, line_dash="dash", line_color="red", annotation_text="Out-of-Sample Test →", annotation_position="top right")
+            st.plotly_chart(fig_bt, use_container_width=True)
+            
+            # --- Row 3: Heatmap and Allocation ---
             col1, col2 = st.columns(2)
             
             with col1:
@@ -130,10 +186,8 @@ if run_btn:
                     "Ticker": list(analysis.opt_result.weights.keys()),
                     "Weight": list(analysis.opt_result.weights.values())
                 })
-                # Filter out near-zero weights for cleaner display
                 weights_df = weights_df[weights_df["Weight"] > 0.005]
                 
-                # Altair Donut Chart
                 donut_chart = alt.Chart(weights_df).mark_arc(innerRadius=50).encode(
                     theta=alt.Theta(field="Weight", type="quantitative"),
                     color=alt.Color(field="Ticker", type="nominal"),
@@ -142,42 +196,75 @@ if run_btn:
                 
                 st.altair_chart(donut_chart, use_container_width=True)
                 st.caption(f"Total Weight Sum: {analysis.weight_sum * 100:.2f}%")
-
+                
             with col2:
-                st.subheader("Efficient Frontier")
-                
-                # Base line for efficient frontier
-                frontier_line = alt.Chart(analysis.frontier_df).mark_line(color="gray", strokeDash=[5,5]).encode(
-                    x=alt.X("volatility:Q", title="Volatility (Risk)", axis=alt.Axis(format='%')),
-                    y=alt.Y("return:Q", title="Expected Return", axis=alt.Axis(format='%')),
-                    tooltip=[alt.Tooltip('return:Q', format='.2%'), alt.Tooltip('volatility:Q', format='.2%')]
+                st.subheader("Asset Correlation")
+                fig_corr = px.imshow(analysis.correlation_df, text_auto=".2f", aspect="auto", color_continuous_scale="RdBu_r")
+                st.plotly_chart(fig_corr, use_container_width=True)
+
+            # --- Row 4: Risk Return Scatter ---
+            st.divider()
+            st.subheader("Risk-Return Profile (In-Sample)")
+            
+            # Scatter for individual assets
+            ind_ann_ret = calculate_annualized_returns(analysis.train_returns)
+            ind_ann_vol = calculate_annualized_volatility(analysis.train_returns)
+            
+            scatter_data = []
+            for t in tickers:
+                scatter_data.append({"Asset": t, "Return": ind_ann_ret[t], "Volatility": ind_ann_vol[t], "Type": "Individual Asset"})
+            
+            # Add Portfolios
+            optimal_metrics = analysis.opt_result.in_sample_metrics
+            equal_metrics = analysis.benchmark_results.equal_weight.in_sample_metrics
+
+            if optimal_metrics is not None:
+                scatter_data.append({
+                    "Asset": "Optimal",
+                    "Return": optimal_metrics.expected_return,
+                    "Volatility": optimal_metrics.volatility,
+                    "Type": "Portfolio"
+                })
+
+            if equal_metrics is not None:
+                scatter_data.append({
+                    "Asset": "Equal Weight",
+                    "Return": equal_metrics.expected_return,
+                    "Volatility": equal_metrics.volatility,
+                    "Type": "Portfolio"
+                })
+
+            market_result = analysis.benchmark_results.market_benchmark
+
+            if market_result is not None and market_result.in_sample_metrics is not None:
+                market_metrics = market_result.in_sample_metrics
+
+                scatter_data.append({
+                    "Asset": "NIFTY 50",
+                    "Return": market_metrics.expected_return,
+                    "Volatility": market_metrics.volatility,
+                    "Type": "Market"
+                })  
+            scatter_df = pd.DataFrame(scatter_data)
+            
+            fig_scatter = px.scatter(
+                scatter_df, x="Volatility", y="Return", color="Type", text="Asset", 
+                title="Risk vs Expected Return (Train Period)",
+                labels={"Return": "Expected Return", "Volatility": "Risk (Volatility)"}
+            )
+            fig_scatter.update_traces(textposition="top center")
+            
+            # Add frontier line
+            fig_scatter.add_trace(
+                go.Scatter(
+                    x=analysis.frontier_df["volatility"],
+                    y=analysis.frontier_df["return"],
+                    mode="lines",
+                    name="Efficient Frontier",
+                    line=dict(
+                        dash="dash",
+                        width=2
+                    )
                 )
-                
-                # Point for Optimal Portfolio
-                opt_point = pd.DataFrame([{
-                    "volatility": analysis.opt_result.metrics.volatility if analysis.opt_result.metrics else 0,
-                    "return": analysis.opt_result.metrics.expected_return if analysis.opt_result.metrics else 0,
-                    "Label": "Max Sharpe (Optimal)"
-                }])
-                
-                opt_chart = alt.Chart(opt_point).mark_circle(size=150, color="green").encode(
-                    x="volatility:Q",
-                    y="return:Q",
-                    tooltip=["Label", alt.Tooltip('return:Q', format='.2%'), alt.Tooltip('volatility:Q', format='.2%')]
-                )
-                
-                # Point for Equal Weight Portfolio
-                eq_point = pd.DataFrame([{
-                    "volatility": analysis.benchmark_results.equal_weight.metrics.volatility if analysis.benchmark_results.equal_weight.metrics else 0,
-                    "return": analysis.benchmark_results.equal_weight.metrics.expected_return if analysis.benchmark_results.equal_weight.metrics else 0,
-                    "Label": "Equal Weight (Naive)"
-                }])
-                
-                eq_chart = alt.Chart(eq_point).mark_circle(size=150, color="red").encode(
-                    x="volatility:Q",
-                    y="return:Q",
-                    tooltip=["Label", alt.Tooltip('return:Q', format='.2%'), alt.Tooltip('volatility:Q', format='.2%')]
-                )
-                
-                combined_chart = (frontier_line + opt_chart + eq_chart).properties(height=350)
-                st.altair_chart(combined_chart, use_container_width=True)
+            )
+            st.plotly_chart(fig_scatter, use_container_width=True)

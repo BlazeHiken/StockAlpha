@@ -67,7 +67,7 @@ def maximize_sharpe_ratio(ann_returns: pd.Series,
     
     return PortfolioResult(
         weights=weights_dict,
-        metrics=metrics,
+        in_sample_metrics=metrics,
         success=bool(result.success),
         error_message=result.message if not result.success else None
     )

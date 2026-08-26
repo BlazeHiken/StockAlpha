@@ -14,13 +14,15 @@ class PortfolioMetrics:
 class PortfolioResult:
     """The result of a portfolio allocation (either optimized or naive)."""
     weights: dict[str, float]
-    metrics: Optional[PortfolioMetrics]
+    in_sample_metrics: Optional[PortfolioMetrics] = None
+    out_of_sample_metrics: Optional[PortfolioMetrics] = None
     success: bool = True
     error_message: Optional[str] = None
 
 @dataclass(frozen=True)
 class BenchmarkResult:
-    """Comparison between an optimized and a baseline equal-weight portfolio."""
+    """Comparison between an optimized and a baseline equal-weight portfolio and a market benchmark."""
     optimized: PortfolioResult
     equal_weight: PortfolioResult
+    market_benchmark: Optional[PortfolioResult]
     comparison_df: pd.DataFrame

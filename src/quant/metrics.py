@@ -118,3 +118,45 @@ def calculate_max_drawdown(daily_returns: pd.Series) -> float:
     
     # Max drawdown is the minimum value (most negative)
     return float(drawdown.min())
+
+def split_data(daily_returns: pd.DataFrame, ratio: float) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Splits the data chronologically into training and testing sets.
+    
+    Args:
+        daily_returns (pd.DataFrame): The daily returns data.
+        ratio (float): The proportion of data to keep for training (e.g. 0.8 for 80%).
+        
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame]: (train_data, test_data)
+    """
+    split_idx = int(len(daily_returns) * ratio)
+    train_data = daily_returns.iloc[:split_idx]
+    test_data = daily_returns.iloc[split_idx:]
+    return train_data, test_data
+
+def calculate_cumulative_returns(daily_returns: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
+    """
+    Calculates the cumulative wealth index over time.
+    
+    Args:
+        daily_returns (pd.DataFrame | pd.Series): Daily returns.
+        
+    Returns:
+        pd.DataFrame | pd.Series: Cumulative wealth index starting from 1.
+    """
+    # Start with 1 on the day before the first return if possible, but cumprod is fine.
+    # To make it start at 1 cleanly, we just use cumprod directly on (1 + R)
+    return (1 + daily_returns).cumprod()
+
+def calculate_correlation_matrix(daily_returns: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates the correlation matrix of the assets.
+    
+    Args:
+        daily_returns (pd.DataFrame): Daily returns.
+        
+    Returns:
+        pd.DataFrame: Correlation matrix.
+    """
+    return daily_returns.corr()
