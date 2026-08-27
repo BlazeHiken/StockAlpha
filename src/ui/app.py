@@ -15,9 +15,24 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from src.config import DEFAULT_TICKERS, DEFAULT_RISK_FREE_RATE, MIN_STOCKS, LOOKBACK_YEARS
 from src.services.portfolio_service import run_portfolio_analysis
+from src.rag.indexer import build_index, get_chroma_client
 
 # --- Configuration & Defaults ---
 st.set_page_config(page_title="StockAlpha Portfolio Optimizer", page_icon="📈", layout="wide")
+
+@st.cache_resource
+def initialize_rag():
+    client = get_chroma_client()
+
+    try:
+        client.get_collection("research_notes")
+    except Exception:
+        build_index()
+
+    return client
+
+initialize_rag()
+
 from streamlit_cookies_manager import EncryptedCookieManager
 
 cookies = EncryptedCookieManager(
