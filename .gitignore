@@ -30,3 +30,5 @@ documentation
 testy.py
 pyrefly.toml
 pytest.ini
+.env
+data/vectorstore/
