@@ -35,9 +35,10 @@ Ensure you have Python 3.10+ installed and a virtual environment set up. This pr
 
 ### Configuration
 
-Create a `.env` file in the root directory to store your API keys. You can use `.env.example` as a template if one is provided.
+Create a `.env` file in the root directory to store your API keys.
 ```env
 GEMINI_API_KEY=your_api_key_here
+COOKIE_PASSWORD=your_password_here
 ```
 
 ### Running the Code
