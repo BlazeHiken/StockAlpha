@@ -37,7 +37,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 
 cookies = EncryptedCookieManager(
     prefix="stockalpha",
-    password="stockalpha_local_secret"
+    password = os.environ["COOKIE_PASSWORD"]
 )
 
 if "ticker_options" not in st.session_state:
@@ -333,7 +333,7 @@ if analysis is not None:
                     cookies["ai_generations"] = str(generations + 1)
                     cookies.save()
                     
-                    brief_text = generate_portfolio_brief(analysis.opt_result)
+                    brief_text = generate_portfolio_brief(analysis.opt_result, analysis.benchmark_results)
                     st.session_state.ai_brief = brief_text
         
         # Always display the brief from session state if it exists

@@ -32,3 +32,4 @@ pyrefly.toml
 pytest.ini
 .env
 data/vectorstore/
+explanation.md
