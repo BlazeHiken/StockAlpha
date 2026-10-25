@@ -5,7 +5,7 @@ Centralized configuration module for StockAlpha.
 DEFAULT_TICKERS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", 
     "INFY.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", 
-    "HINDUNILVR.NS", "LARSEN.NS"
+    "HINDUNILVR.NS", "LT.NS"
 ]
 
 DEFAULT_RISK_FREE_RATE = 0.065  # Indian 10y G-Sec
