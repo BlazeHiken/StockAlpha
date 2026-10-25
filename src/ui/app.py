@@ -178,7 +178,7 @@ if analysis is not None:
             lambda x: f"{float(x):.3f}"
         )
     
-    st.dataframe(display_df, use_container_width=True)
+    st.dataframe(display_df, width='stretch')
     
     # --- Row 2: Charts ---
     st.divider()
@@ -208,7 +208,7 @@ if analysis is not None:
     fig_bt = px.line(chart_df, labels={"value": "Cumulative Wealth Index", "index": "Date"}, title="Cumulative Returns")
     split_date = analysis.test_returns.index[0]
     fig_bt.add_vline(x=split_date, line_dash="dash", line_color="red", annotation_text="Out-of-Sample Test →", annotation_position="top right")
-    st.plotly_chart(fig_bt, use_container_width=True)
+    st.plotly_chart(fig_bt, width='stretch')
     
     # --- Row 3: Heatmap and Allocation ---
     col1, col2 = st.columns(2)
@@ -228,13 +228,13 @@ if analysis is not None:
             tooltip=['Ticker', alt.Tooltip('Weight', format='.1%')]
         ).properties(height=350)
         
-        st.altair_chart(donut_chart, use_container_width=True)
+        st.altair_chart(donut_chart, width='stretch')
         st.caption(f"Total Weight Sum: {analysis.weight_sum * 100:.2f}%")
         
     with col2:
         st.subheader("Asset Correlation")
         fig_corr = px.imshow(analysis.correlation_df, text_auto=".2f", aspect="auto", color_continuous_scale="RdBu_r")
-        st.plotly_chart(fig_corr, use_container_width=True)
+        st.plotly_chart(fig_corr, width='stretch')
 
     # --- Row 4: Risk Return Scatter ---
     st.divider()
@@ -301,8 +301,8 @@ if analysis is not None:
             )
         )
     )
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    
+    st.plotly_chart(fig_scatter, width='stretch')
+
     # --- Row 5: AI Brief Generation ---
     st.divider()
     st.subheader("AI-Explained Portfolio Brief")
